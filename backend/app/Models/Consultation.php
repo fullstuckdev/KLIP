@@ -22,6 +22,8 @@ class Consultation extends Model
         'status',
         'notes',
         'psikolog_id',
+        'deleted_by_user',
+        'deleted_by_psikolog',
     ];
 
     protected $casts = [

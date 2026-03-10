@@ -10,6 +10,7 @@ export default function Reports() {
   const [dataLoading, setDataLoading] = useState(false);
   const [consultations, setConsultations] = useState([]);
   const [chartRange, setChartRange] = useState("daily");
+  const [exportingType, setExportingType] = useState("");
 
   useEffect(() => {
     document.title = "Laporan Psikolog - KLIP";
@@ -191,6 +192,45 @@ export default function Reports() {
     };
   }, [chartData]);
 
+  const handleExportConsultations = async (type) => {
+    try {
+      setExportingType(type);
+      const response = await api.get(`/api/consultations/export/${type}`, {
+        responseType: "blob",
+      });
+
+      const contentType = response.headers?.["content-type"] || "";
+      if (contentType.includes("application/json")) {
+        const text = await response.data.text();
+        const json = JSON.parse(text);
+        throw new Error(json?.message || "Gagal export laporan");
+      }
+
+      const fallbackName = `laporan-konsultasi-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.${type === "pdf" ? "pdf" : "csv"}`;
+      const disposition = response.headers?.["content-disposition"] || "";
+      const filenameMatch = disposition.match(/filename="?([^"\s]+)"?/i);
+      const filename = filenameMatch?.[1] || fallbackName;
+
+      const blob = new Blob([response.data], {
+        type: type === "pdf" ? "application/pdf" : "text/csv",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => window.URL.revokeObjectURL(url), 200);
+    } catch (error) {
+      console.error("Gagal export laporan:", error);
+      alert(error?.message || "Gagal export laporan konsultasi");
+    } finally {
+      setExportingType("");
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await api.post("/api/logout");
@@ -271,13 +311,31 @@ export default function Reports() {
                   <h1 className="text-3xl font-bold text-gray-800">Laporan Konsultasi</h1>
                   <p className="text-sm text-gray-600 mt-1">Ringkasan tren data asesmen untuk psikolog.</p>
                 </div>
-                <button
-                  onClick={fetchConsultations}
-                  disabled={dataLoading}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {dataLoading ? "Memuat..." : "Refresh Data"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleExportConsultations("pdf")}
+                    disabled={exportingType !== ""}
+                    className="px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {exportingType === "pdf" ? "Mengunduh..." : "Export PDF"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportConsultations("excel")}
+                    disabled={exportingType !== ""}
+                    className="px-3 py-2 text-sm bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {exportingType === "excel" ? "Mengunduh..." : "Export Excel"}
+                  </button>
+                  <button
+                    onClick={fetchConsultations}
+                    disabled={dataLoading}
+                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    {dataLoading ? "Memuat..." : "Refresh Data"}
+                  </button>
+                </div>
               </div>
 
               <div className="mb-4 flex items-center gap-2">

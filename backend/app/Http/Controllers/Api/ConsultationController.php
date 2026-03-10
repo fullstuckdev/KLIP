@@ -75,6 +75,7 @@ class ConsultationController extends Controller
         if ($this->isPsikolog($user)) {
             $consultations = Consultation::with(['user', 'psikolog'])
                 ->where('psikolog_id', $user->id)
+                ->where('deleted_by_psikolog', false)
                 ->orderBy('created_at', 'desc')
                 ->get();
         } elseif ($this->isAdmin($user)) {
@@ -84,6 +85,7 @@ class ConsultationController extends Controller
         } else {
             $consultations = Consultation::with(['user', 'psikolog'])
                 ->where('user_id', $user->id)
+                ->where('deleted_by_user', false)
                 ->orderBy('created_at', 'desc')
                 ->get();
         }
@@ -242,13 +244,38 @@ class ConsultationController extends Controller
         $user = $request->user();
         $consultation = Consultation::findOrFail($id);
 
-        if ($consultation->user_id !== $user->id && !$this->isAdmin($user)) {
+        if ($this->isAdmin($user)) {
+            // Admin hard-deletes the record
+            $consultation->delete();
+            return response()->json(['message' => 'Konsultasi berhasil dihapus']);
+        }
+
+        if ($this->isPsikolog($user)) {
+            if ($consultation->psikolog_id !== $user->id) {
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+            $consultation->update(['deleted_by_psikolog' => true]);
+
+            // If both sides have deleted, hard-delete the record
+            if ($consultation->deleted_by_user) {
+                $consultation->delete();
+            }
+
+            return response()->json(['message' => 'Riwayat chat berhasil dihapus dari daftar Anda']);
+        }
+
+        if ($consultation->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $consultation->delete();
+        $consultation->update(['deleted_by_user' => true]);
 
-        return response()->json(['message' => 'Konsultasi berhasil dihapus']);
+        // If both sides have deleted, hard-delete the record
+        if ($consultation->deleted_by_psikolog) {
+            $consultation->delete();
+        }
+
+        return response()->json(['message' => 'Riwayat chat berhasil dihapus dari daftar Anda']);
     }
 
     /**

@@ -23,6 +23,8 @@ export default function Chat() {
 
   const bottomRef  = useRef(null);
   const channelRef = useRef(null);
+  const pusherReady = useRef(false);
+  const pollTimerRef = useRef(null);
 
   // â”€â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
@@ -62,6 +64,11 @@ export default function Chat() {
     const pusher  = getPusher();
     const channel = pusher.subscribe(`private-consultation.${consultationId}`);
     channelRef.current = channel;
+    pusherReady.current = false;
+
+    channel.bind('pusher:subscription_succeeded', () => {
+      pusherReady.current = true;
+    });
 
     channel.bind('message.sent', (data) => {
       setMessages((prev) => {
@@ -73,12 +80,47 @@ export default function Chat() {
 
     channel.bind('pusher:subscription_error', (err) => {
       console.error('Pusher subscription error:', err);
+      pusherReady.current = false;
     });
 
     return () => {
+      pusherReady.current = false;
       channel.unbind_all();
       pusher.unsubscribe(`private-consultation.${consultationId}`);
       channelRef.current = null;
+    };
+  }, [consultationId]);
+
+  // ─── Polling fallback (when Pusher is not connected) ───────────────────────
+  useEffect(() => {
+    if (!consultationId) return;
+
+    const POLL_INTERVAL = 3000;
+
+    const poll = async () => {
+      // Skip polling when Pusher is connected and subscribed
+      if (pusherReady.current) return;
+      try {
+        const { data } = await api.get(`/api/chat/${consultationId}/messages`);
+        const incoming = Array.isArray(data) ? data : [];
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => String(m.id)));
+          const newMsgs = incoming.filter(
+            (m) => !existingIds.has(String(m.id)) && !String(m.id).startsWith('temp-')
+          );
+          if (newMsgs.length === 0) return prev;
+          return [...prev, ...newMsgs];
+        });
+      } catch (_) {
+        // silently ignore poll errors
+      }
+    };
+
+    pollTimerRef.current = setInterval(poll, POLL_INTERVAL);
+
+    return () => {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
     };
   }, [consultationId]);
 
@@ -447,14 +489,15 @@ function ConsultationPicker({ user, onLogout }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleDeleteAllMessages = async () => {
+  const handleDeleteConsultation = async () => {
     if (!confirmDelete) return;
     setDeletingId(confirmDelete.id);
     try {
-      await api.delete(`/api/chat/${confirmDelete.id}/messages`);
+      await api.delete(`/api/consultations/${confirmDelete.id}`);
+      setConsultations((prev) => prev.filter((c) => c.id !== confirmDelete.id));
       setConfirmDelete(null);
     } catch (err) {
-      console.error('Failed to delete messages:', err);
+      console.error('Failed to delete consultation:', err);
     } finally {
       setDeletingId(null);
     }
@@ -595,12 +638,12 @@ function ConsultationPicker({ user, onLogout }) {
         {confirmDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
-              <h3 className="text-lg font-bold text-gray-800 mb-2">Hapus Semua Chat?</h3>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Hapus Riwayat Chat?</h3>
               <p className="text-sm text-gray-500 mb-1">
                 Sesi <span className="font-medium">#{confirmDelete.id}</span> &ndash; {user?.status_pengguna === 'User' ? 'Psikolog' : 'User'}: {user?.status_pengguna === 'User' ? (confirmDelete.psikolog?.name ?? 'Psikolog') : (confirmDelete.user?.name ?? 'User')}
               </p>
               <p className="text-sm text-gray-500 mb-5">
-                Semua riwayat pesan akan dihapus permanen.
+                Riwayat chat ini akan dihapus permanen dari daftar Anda. Pihak lain tetap dapat melihatnya.
               </p>
               <div className="flex justify-end gap-3">
                 <button
@@ -611,11 +654,11 @@ function ConsultationPicker({ user, onLogout }) {
                   Batal
                 </button>
                 <button
-                  onClick={handleDeleteAllMessages}
+                  onClick={handleDeleteConsultation}
                   disabled={deletingId === confirmDelete.id}
                   className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition"
                 >
-                  {deletingId === confirmDelete.id ? 'Menghapus…' : 'Ya, Hapus Semua'}
+                  {deletingId === confirmDelete.id ? 'Menghapus…' : 'Ya, Hapus Permanen'}
                 </button>
               </div>
             </div>

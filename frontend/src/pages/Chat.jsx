@@ -447,15 +447,16 @@ export default function Chat() {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Tulis pesan… (Enter untuk kirim, Shift+Enter baris baru)"
+              placeholder={consultation?.status === 'completed' ? 'Sesi chat telah selesai' : 'Tulis pesan… (Enter untuk kirim, Shift+Enter baris baru)'}
               rows={1}
               className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm
                          focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               style={{ maxHeight: '120px', overflowY: 'auto' }}
+              disabled={consultation?.status === 'completed'}
             />
             <button
               onClick={sendMessage}
-              disabled={!inputValue.trim() || sending}
+              disabled={consultation?.status === 'completed' || !inputValue.trim() || sending}
               className="bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white
                          px-4 py-2 rounded-lg text-sm font-medium transition flex-shrink-0"
             >

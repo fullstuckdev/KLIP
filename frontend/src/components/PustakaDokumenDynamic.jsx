@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import api from "../lib/axios";
-import DocumentForm from "./DocumentForm";
 
 export default function PustakaDokumenDynamic() {
   // Default documents untuk fallback jika API error
@@ -89,11 +88,6 @@ export default function PustakaDokumenDynamic() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [user, setUser] = useState(null);
-
-  const isAdmin =
-    (user?.status_pengguna || "").toLowerCase() === "admin" ||
-    (user?.daftar_sebagai || "").toLowerCase() === "admin";
 
   // State untuk kategori utama
   const [openCategories, setOpenCategories] = useState({
@@ -105,30 +99,10 @@ export default function PustakaDokumenDynamic() {
   // State untuk sub-kategori (nested)
   const [openSubs, setOpenSubs] = useState({});
 
-  // State untuk form dokumen
-  const [showForm, setShowForm] = useState(false);
-
   // State untuk video edukasi
   const [currentIndex, setCurrentIndex] = useState(0);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [visibleCount, setVisibleCount] = useState(3);
-
-  // Fetch user data
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const token = localStorage.getItem("auth_token");
-        if (token) {
-          const response = await api.get("/api/user");
-          const userData = response?.data?.user || response?.data;
-          setUser(userData || null);
-        }
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      }
-    };
-    fetchUser();
-  }, []);
 
   const fetchDocuments = async () => {
     try {
@@ -146,6 +120,7 @@ export default function PustakaDokumenDynamic() {
       );
       const vids = payload.filter((doc) => doc.type === "video");
 
+      // Use DB data; fall back to hardcoded defaults only if DB is completely empty
       setDocuments(docs.length > 0 ? docs : defaultDocuments);
       setVideos(vids.length > 0 ? vids : defaultVideos);
       setError(null);
@@ -203,10 +178,14 @@ export default function PustakaDokumenDynamic() {
   };
 
   const openPdf = async (fileUrl) => {
+    // External URLs (Google Drive, etc.) — open directly to avoid CORS
+    if (fileUrl.startsWith("http")) {
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    // Local PDFs — fetch as blob
     try {
-      const finalUrl = fileUrl.startsWith("http")
-        ? fileUrl
-        : window.location.origin + fileUrl;
+      const finalUrl = window.location.origin + fileUrl;
       const response = await fetch(finalUrl, {
         headers: { "Cache-Control": "no-cache" },
       });
@@ -272,46 +251,6 @@ export default function PustakaDokumenDynamic() {
             konsultasi dan layanan di Patnal Integrity Hub.
           </p>
         </div>
-
-        {/* Tombol Tambah Dokumen - khusus admin */}
-        {isAdmin && (
-          <div className="flex justify-center mb-8">
-            <button
-              onClick={() => setShowForm(!showForm)}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 
-                transition-colors duration-200 font-semibold
-                flex items-center gap-2"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Tambah Dokumen
-            </button>
-          </div>
-        )}
-
-        {/* Form Tambah Dokumen */}
-        {showForm && (
-          <div className="mb-8 bg-blue-50 rounded-xl p-6 border border-blue-200">
-            <DocumentForm
-              onSuccess={() => {
-                setShowForm(false);
-                fetchDocuments();
-              }}
-              onCancel={() => setShowForm(false)}
-            />
-          </div>
-        )}
 
         {error && (
           <div className="mb-8 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -573,7 +512,7 @@ export default function PustakaDokumenDynamic() {
           {/* ========================================= */}
           {/* KATEGORI 3: Edukasi (Video)                */}
           {/* ========================================= */}
-          {videos.length > 0 && (
+          {(videos.length > 0 || (groupedDocs.edukasi && Object.keys(groupedDocs.edukasi).length > 0)) && (
             <div className="bg-white rounded-xl shadow-sm md:shadow-md border border-gray-200 overflow-hidden">
               <button
                 onClick={() => toggleCategory("edukasi")}
@@ -597,7 +536,7 @@ export default function PustakaDokumenDynamic() {
                     />
                   </svg>
                   <span className="font-semibold text-gray-800 text-sm sm:text-base lg:text-lg">
-                    Edukasi ({videos.length})
+                    Edukasi
                   </span>
                 </div>
                 <svg
@@ -619,10 +558,70 @@ export default function PustakaDokumenDynamic() {
 
               <div
                 className={`overflow-hidden transition-all duration-500 ease-in-out ${
-                  openCategories.edukasi ? "max-h-[800px]" : "max-h-0"
+                  openCategories.edukasi ? "max-h-[1600px]" : "max-h-0"
                 }`}
               >
                 <div className="border-t border-gray-100 p-4 md:p-6 bg-gradient-to-b from-blue-50/50 to-white">
+                  {/* Edukasi PDF Documents */}
+                  {groupedDocs.edukasi && Object.keys(groupedDocs.edukasi).length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-gray-700 mb-3 text-sm sm:text-base">
+                        Dokumen Edukasi
+                      </h4>
+                      <ul className="space-y-2">
+                        {Object.values(groupedDocs.edukasi).flat().map((item) => (
+                          <li key={item.id} className="border border-gray-100 rounded-lg bg-white">
+                            <button
+                              onClick={() => openPdf(item.file)}
+                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50
+                                transition-colors duration-200 group rounded-lg text-left"
+                            >
+                              {item.cover && (
+                                <div className="w-8 h-11 rounded overflow-hidden shadow-sm flex-shrink-0">
+                                  <img
+                                    src={item.cover}
+                                    alt={item.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              <svg
+                                className="w-5 h-5 text-red-500 flex-shrink-0"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                />
+                              </svg>
+                              <span className="flex-1 text-gray-700 text-xs sm:text-sm group-hover:text-blue-600 transition-colors">
+                                {item.title}
+                              </span>
+                              <svg
+                                className="w-4 h-4 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all flex-shrink-0"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Video Edukasi */}
                   {videos[currentIndex] && (
                     <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mb-6 max-h-[70vh]">
                       <iframe

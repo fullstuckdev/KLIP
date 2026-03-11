@@ -59,6 +59,8 @@ class User extends Authenticatable
             'foto_position_x' => 'integer',
             'foto_position_y' => 'integer',
             'is_available' => 'boolean',
+            'is_online' => 'boolean',
+            'last_seen_at' => 'datetime',
         ];
     }
 }

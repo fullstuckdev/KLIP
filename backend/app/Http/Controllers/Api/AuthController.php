@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use App\Models\User;
@@ -31,6 +32,11 @@ class AuthController extends Controller
             ]);
         }
 
+        DB::table('users')->where('id', $user->id)->update([
+            'is_online' => true,
+            'last_seen_at' => now(),
+        ]);
+
         // create token
         $token = $user->createToken('api-token')->plainTextToken;
 
@@ -46,6 +52,14 @@ class AuthController extends Controller
         $user = $request->user();
         if ($user && $user->currentAccessToken()) {
             $user->currentAccessToken()->delete();
+
+            // Set offline only when no other active tokens remain for this user.
+            if (! $user->tokens()->exists()) {
+                DB::table('users')->where('id', $user->id)->update([
+                    'is_online' => false,
+                    'last_seen_at' => now(),
+                ]);
+            }
         }
 
         return response()->json(['message' => 'Logged out']);

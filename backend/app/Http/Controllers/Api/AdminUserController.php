@@ -42,6 +42,9 @@ class AdminUserController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'no_wa' => ['nullable', 'string', 'max:25'],
+            'pangkat_golongan' => ['nullable', 'string', 'max:255'],
+            'jabatan' => ['nullable', 'string', 'max:255'],
+            'bagian' => ['nullable', 'string', 'max:255'],
             'daftar_sebagai' => ['nullable', 'string', 'max:255'],
             'organization_detail' => ['nullable', 'string', 'max:255'],
             'status_pengguna' => ['required', Rule::in(['User', 'Admin', 'Psikolog'])],
@@ -50,6 +53,13 @@ class AdminUserController extends Controller
 
         if (!array_key_exists('is_available', $validated)) {
             $validated['is_available'] = true;
+        }
+
+        // Normalize empty strings to null for optional fields
+        foreach (['pangkat_golongan', 'jabatan', 'bagian', 'no_wa', 'daftar_sebagai', 'organization_detail'] as $field) {
+            if (array_key_exists($field, $validated) && $validated[$field] === '') {
+                $validated[$field] = null;
+            }
         }
 
         $user = User::create($validated);
@@ -74,6 +84,9 @@ class AdminUserController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'no_wa' => ['nullable', 'string', 'max:25'],
+            'pangkat_golongan' => ['nullable', 'string', 'max:255'],
+            'jabatan' => ['nullable', 'string', 'max:255'],
+            'bagian' => ['nullable', 'string', 'max:255'],
             'daftar_sebagai' => ['nullable', 'string', 'max:255'],
             'organization_detail' => ['nullable', 'string', 'max:255'],
             'status_pengguna' => ['required', Rule::in(['User', 'Admin', 'Psikolog'])],
@@ -82,6 +95,13 @@ class AdminUserController extends Controller
 
         if (empty($validated['password'])) {
             unset($validated['password']);
+        }
+
+        // Normalize empty strings to null for optional fields
+        foreach (['pangkat_golongan', 'jabatan', 'bagian', 'no_wa', 'daftar_sebagai', 'organization_detail'] as $field) {
+            if (array_key_exists($field, $validated) && $validated[$field] === '') {
+                $validated[$field] = null;
+            }
         }
 
         $user->update($validated);

@@ -24,24 +24,37 @@ class DocumentController extends Controller
      */
     public function index(Request $request)
     {
+        // Admin sees every document regardless of status
+        if ($this->isAdmin($request->user())) {
+            $query = Document::with('user');
+
+            if ($request->has('category')) {
+                $query->where('category', $request->category);
+            }
+            if ($request->has('sub_category')) {
+                $query->where('sub_category', $request->sub_category);
+            }
+            if ($request->has('type')) {
+                $query->where('type', $request->type);
+            }
+
+            return response()->json($query->orderBy('created_at', 'desc')->get());
+        }
+
+        // Public / regular users: only published documents
         $query = Document::where('status', 'published')->with('user');
 
-        // Filter by category if provided
         if ($request->has('category')) {
             $query->where('category', $request->category);
         }
-
-        // Filter by sub_category if provided
         if ($request->has('sub_category')) {
             $query->where('sub_category', $request->sub_category);
         }
-
-        // Filter by type if provided
         if ($request->has('type')) {
             $query->where('type', $request->type);
         }
 
-        // If user is authenticated, also show their draft documents
+        // Also show authenticated user's own drafts
         if ($request->user()) {
             $query->orWhere(function ($q) use ($request) {
                 $q->where('user_id', $request->user()->id)
@@ -66,8 +79,8 @@ class DocumentController extends Controller
             'title' => 'required|string|max:255',
             'category' => 'required|string|in:peraturan,ebook,edukasi',
             'sub_category' => 'required|string|max:255',
-            'cover' => 'nullable|url',
-            'file' => 'nullable|url',
+            'cover' => 'nullable|string|max:500',
+            'file' => 'nullable|string|max:500',
             'description' => 'nullable|string',
             'type' => 'required|string|in:pdf,video,ebook,other',
             'video_url' => 'nullable|url',
@@ -126,8 +139,8 @@ class DocumentController extends Controller
             'title' => 'sometimes|string|max:255',
             'category' => 'sometimes|string|in:peraturan,ebook,edukasi',
             'sub_category' => 'sometimes|string|max:255',
-            'cover' => 'nullable|url',
-            'file' => 'nullable|url',
+            'cover' => 'nullable|string|max:500',
+            'file' => 'nullable|string|max:500',
             'description' => 'nullable|string',
             'type' => 'sometimes|string|in:pdf,video,ebook,other',
             'video_url' => 'nullable|url',

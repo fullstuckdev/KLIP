@@ -48,6 +48,16 @@ class AuthWebController extends Controller
                 'status_pengguna' => ['required', 'string'],
             ]);
 
+            // Trim whitespace from all string fields to prevent login failures
+            foreach (['nip', 'email', 'pangkat_golongan', 'jabatan', 'bagian', 'no_wa', 'daftar_sebagai', 'status_pengguna'] as $field) {
+                if (isset($validated[$field])) {
+                    $validated[$field] = trim($validated[$field]);
+                }
+            }
+            if (isset($validated['organization_detail'])) {
+                $validated['organization_detail'] = trim($validated['organization_detail']);
+            }
+
             \Log::info('Register attempt', [
                 'nip' => $validated['nip'],
                 'email' => $validated['email'],

@@ -68,6 +68,7 @@ export default function Profile() {
     no_wa: '',
     daftar_sebagai: '',
     organization_detail: '',
+    current_password: '',
   });
   const [selectedUptProvince, setSelectedUptProvince] = useState('');
   const navigate = useNavigate();
@@ -90,6 +91,7 @@ export default function Profile() {
         no_wa: userData.no_wa || '',
         daftar_sebagai: initialDaftarSebagai,
         organization_detail: initialOrganizationDetail,
+        current_password: '',
       });
 
       if (initialDaftarSebagai === 'UPT') {
@@ -186,6 +188,7 @@ export default function Profile() {
         no_wa: user?.no_wa || '',
         daftar_sebagai: user?.daftar_sebagai || '',
         organization_detail: user?.organization_detail || '',
+        current_password: '',
       });
 
       if (user?.daftar_sebagai === 'UPT') {
@@ -257,6 +260,7 @@ export default function Profile() {
       setSuccess('Profil berhasil diperbarui');
       await fetchUser();
       setIsEditing(false);
+      setFormData(prev => ({ ...prev, current_password: '' }));
     } catch (err) {
       // Show field-level validation errors if available
       const errors = err?.response?.data?.errors;
@@ -573,14 +577,31 @@ export default function Profile() {
                   </div>
 
                   {isEditing && (
-                    <div className="mt-6 flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={updating}
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        {updating ? 'Menyimpan...' : 'Simpan Perubahan'}
-                      </button>
+                    <div className="mt-6 space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Konfirmasi Password <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="password"
+                          name="current_password"
+                          value={formData.current_password}
+                          onChange={handleInputChange}
+                          required
+                          placeholder="Masukkan password saat ini untuk menyimpan perubahan"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Wajib diisi untuk mengkonfirmasi identitas Anda</p>
+                      </div>
+                      <div className="flex justify-end">
+                        <button
+                          type="submit"
+                          disabled={updating}
+                          className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {updating ? 'Menyimpan...' : 'Simpan Perubahan'}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </form>

@@ -47,7 +47,7 @@ class AdminUserController extends Controller
             'bagian' => ['nullable', 'string', 'max:255'],
             'daftar_sebagai' => ['nullable', 'string', 'max:255'],
             'organization_detail' => ['nullable', 'string', 'max:255'],
-            'status_pengguna' => ['required', Rule::in(['User', 'Admin', 'Psikolog'])],
+            'status_pengguna' => ['required', Rule::in(['User', 'Admin', 'Psikolog', 'Asisten Psikolog'])],
             'is_available' => ['nullable', 'boolean'],
         ]);
 
@@ -89,7 +89,7 @@ class AdminUserController extends Controller
             'bagian' => ['nullable', 'string', 'max:255'],
             'daftar_sebagai' => ['nullable', 'string', 'max:255'],
             'organization_detail' => ['nullable', 'string', 'max:255'],
-            'status_pengguna' => ['required', Rule::in(['User', 'Admin', 'Psikolog'])],
+            'status_pengguna' => ['required', Rule::in(['User', 'Admin', 'Psikolog', 'Asisten Psikolog'])],
             'is_available' => ['nullable', 'boolean'],
         ]);
 

@@ -895,202 +895,293 @@ export default function AdminDashboard() {
       </div>
 
       {docFormOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">
-              {editingDocId ? "Edit Dokumen" : "Tambah Dokumen Baru"}
-            </h3>
-
-            {docError && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {docError}
-              </div>
-            )}
-
-            <form onSubmit={handleDocSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Dokumen *</label>
-                <select name="type" value={docForm.type} onChange={handleDocFormChange} className="w-full border border-gray-300 rounded px-3 py-2">
-                  <option value="pdf">PDF</option>
-                  <option value="ebook">E-Book</option>
-                  <option value="video">Video</option>
-                  <option value="other">Lainnya</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Utama *</label>
-                <select name="category" value={docForm.category} onChange={handleDocFormChange} className="w-full border border-gray-300 rounded px-3 py-2">
-                  <option value="peraturan">Himpunan Peraturan</option>
-                  <option value="ebook">Standar Operasional Pelaksanaan</option>
-                  <option value="edukasi">Edukasi</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Sub Kategori *</label>
-                <select name="sub_category" value={docForm.sub_category} onChange={handleDocFormChange} required className="w-full border border-gray-300 rounded px-3 py-2">
-                  <option value="">-- Pilih Sub Kategori --</option>
-                  {(docCategoryOptions[docForm.category] || []).map((opt) => (
-                    <option key={opt.id} value={opt.id}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Judul *</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={docForm.title}
-                  onChange={handleDocFormChange}
-                  placeholder="Judul dokumen"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                  required
-                />
-              </div>
-
-              {(docForm.type === "pdf" || docForm.type === "ebook" || docForm.type === "other") && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className={`px-6 py-4 flex items-center justify-between ${
+              editingDocId ? "bg-blue-600" : "bg-green-600"
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL File *</label>
-                  <input
-                    type="url"
-                    name="file"
-                    value={docForm.file}
-                    onChange={handleDocFormChange}
-                    placeholder="https://drive.google.com/..."
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Link Google Drive, Dropbox, dll.</p>
+                  <h3 className="text-lg font-bold text-white">{editingDocId ? "Edit Dokumen" : "Tambah Dokumen Baru"}</h3>
+                  <p className="text-xs text-white/70">{editingDocId ? "Perbarui informasi dokumen" : "Isi formulir untuk menambah dokumen"}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setDocFormOpen(false); setDocForm(emptyDocForm); setEditingDocId(null); }}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5">
+              {docError && (
+                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-start gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {docError}
                 </div>
               )}
 
-              {docForm.type === "video" && (
+              <form onSubmit={handleDocSubmit} id="doc-form" className="space-y-5">
+                {/* Tipe & Kategori */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">YouTube Embed URL *</label>
-                  <input
-                    type="url"
-                    name="video_url"
-                    value={docForm.video_url}
-                    onChange={handleDocFormChange}
-                    placeholder="https://www.youtube.com/embed/..."
-                    className="w-full border border-gray-300 rounded px-3 py-2"
-                  />
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Klasifikasi Dokumen</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipe Dokumen <span className="text-red-500">*</span></label>
+                      <select name="type" value={docForm.type} onChange={handleDocFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        <option value="pdf">📄 PDF</option>
+                        <option value="ebook">📚 E-Book</option>
+                        <option value="video">🎥 Video</option>
+                        <option value="other">📎 Lainnya</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Kategori Utama <span className="text-red-500">*</span></label>
+                      <select name="category" value={docForm.category} onChange={handleDocFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                        <option value="peraturan">Himpunan Peraturan</option>
+                        <option value="ebook">Standar Operasional</option>
+                        <option value="edukasi">Edukasi</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sub Kategori <span className="text-red-500">*</span></label>
+                    <select name="sub_category" value={docForm.sub_category} onChange={handleDocFormChange} required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                      <option value="">-- Pilih Sub Kategori --</option>
+                      {(docCategoryOptions[docForm.category] || []).map((opt) => (
+                        <option key={opt.id} value={opt.id}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">URL Cover (opsional)</label>
-                <input
-                  type="url"
-                  name="cover"
-                  value={docForm.cover}
-                  onChange={handleDocFormChange}
-                  placeholder="https://..."
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
+                <div className="border-t border-gray-100" />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi (opsional)</label>
-                <textarea
-                  name="description"
-                  value={docForm.description}
-                  onChange={handleDocFormChange}
-                  rows="2"
-                  className="w-full border border-gray-300 rounded px-3 py-2"
-                />
-              </div>
+                {/* Konten */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Konten</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Judul Dokumen <span className="text-red-500">*</span></label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={docForm.title}
+                        onChange={handleDocFormChange}
+                        placeholder="Masukkan judul dokumen..."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setDocFormOpen(false); setDocForm(emptyDocForm); setEditingDocId(null); }}
-                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={docSubmitting}
-                  className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  {docSubmitting ? "Menyimpan..." : "Simpan"}
-                </button>
-              </div>
-            </form>
+                    {(docForm.type === "pdf" || docForm.type === "ebook" || docForm.type === "other") && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">URL File <span className="text-red-500">*</span></label>
+                        <input
+                          type="url"
+                          name="file"
+                          value={docForm.file}
+                          onChange={handleDocFormChange}
+                          placeholder="https://drive.google.com/file/d/..."
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">💡 Bisa gunakan link Google Drive, Dropbox, OneDrive, dll.</p>
+                      </div>
+                    )}
+
+                    {docForm.type === "video" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">YouTube Embed URL <span className="text-red-500">*</span></label>
+                        <input
+                          type="url"
+                          name="video_url"
+                          value={docForm.video_url}
+                          onChange={handleDocFormChange}
+                          placeholder="https://www.youtube.com/embed/VIDEO_ID"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">💡 Gunakan format embed: youtube.com/embed/VIDEO_ID</p>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">URL Cover <span className="text-gray-400 font-normal">(opsional)</span></label>
+                      <input
+                        type="url"
+                        name="cover"
+                        value={docForm.cover}
+                        onChange={handleDocFormChange}
+                        placeholder="https://... (gambar thumbnail)"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Deskripsi <span className="text-gray-400 font-normal">(opsional)</span></label>
+                      <textarea
+                        name="description"
+                        value={docForm.description}
+                        onChange={handleDocFormChange}
+                        rows="3"
+                        placeholder="Deskripsi singkat tentang dokumen ini..."
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3 rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => { setDocFormOpen(false); setDocForm(emptyDocForm); setEditingDocId(null); }}
+                className="px-5 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-white hover:shadow-sm transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="doc-form"
+                disabled={docSubmitting}
+                className={`px-5 py-2 rounded-lg text-sm text-white font-medium transition-all disabled:opacity-50 ${
+                  editingDocId ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"
+                }`}
+              >
+                {docSubmitting ? (
+                  <span className="flex items-center gap-2"><svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Menyimpan...</span>
+                ) : (editingDocId ? "Simpan Perubahan" : "Tambah Dokumen")}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {userFormOpen && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-bold text-gray-800 mb-4">
-              {editingUserId ? "Ubah User" : "Tambah User"}
-            </h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[92vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className={`px-6 py-4 flex items-center justify-between ${
+              editingUserId ? "bg-blue-600" : "bg-orange-500"
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">{editingUserId ? "Ubah Data User" : "Tambah User Baru"}</h3>
+                  <p className="text-xs text-white/70">{editingUserId ? "Perbarui informasi akun pengguna" : "Isi formulir untuk membuat akun baru"}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setUserFormOpen(false); resetUserForm(); }}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
+            {/* Modal Body */}
+            <div className="overflow-y-auto flex-1 px-6 py-5">
             {userError && (
-              <div className="mb-4 p-3 rounded border border-red-200 bg-red-50 text-red-700 text-sm">
+              <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700 text-sm flex items-start gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
                 {userError}
               </div>
             )}
 
-            <form onSubmit={handleUserSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
-                  <input name="name" value={userForm.name} onChange={handleUserFormChange} required className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">NIP</label>
-                  <input name="nip" value={userForm.nip} onChange={handleUserFormChange} required className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input type="email" name="email" value={userForm.email} onChange={handleUserFormChange} required className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">No WhatsApp</label>
-                  <input name="no_wa" value={userForm.no_wa} onChange={handleUserFormChange} placeholder="+62 812-3456-7890" className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pangkat / Golongan</label>
-                  <input name="pangkat_golongan" value={userForm.pangkat_golongan} onChange={handleUserFormChange} placeholder="Contoh: Penata / III-C" className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
-                  <input name="jabatan" value={userForm.jabatan} onChange={handleUserFormChange} placeholder="Contoh: Staf Pengawasan" className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bagian</label>
-                  <input name="bagian" value={userForm.bagian} onChange={handleUserFormChange} placeholder="Contoh: Kepatuhan Internal" className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <select name="status_pengguna" value={userForm.status_pengguna} onChange={handleUserFormChange} required className="w-full border border-gray-300 rounded px-3 py-2">
-                    <option value="User">User</option>
-                    <option value="Psikolog">Psikolog</option>
-                    <option value="Admin">Admin</option>
-                  </select>
+            <form onSubmit={handleUserSubmit} id="user-form" className="space-y-5">
+              {/* Informasi Akun */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Informasi Akun</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap <span className="text-red-500">*</span></label>
+                    <input name="name" value={userForm.name} onChange={handleUserFormChange} required placeholder="Masukkan nama lengkap" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">NIP <span className="text-red-500">*</span></label>
+                    <input name="nip" value={userForm.nip} onChange={handleUserFormChange} required placeholder="Nomor Induk Pegawai" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
+                    <input type="email" name="email" value={userForm.email} onChange={handleUserFormChange} required placeholder="contoh@email.com" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">No WhatsApp</label>
+                    <input name="no_wa" value={userForm.no_wa} onChange={handleUserFormChange} placeholder="+62 812-3456-7890" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
                 </div>
               </div>
 
-              {/* Daftar Sebagai + Organization Detail (dynamic like Register) */}
+              <div className="border-t border-gray-100" />
+
+              {/* Informasi Jabatan */}
               <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Informasi Jabatan</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pangkat / Golongan</label>
+                    <input name="pangkat_golongan" value={userForm.pangkat_golongan} onChange={handleUserFormChange} placeholder="Penata / III-C" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Jabatan</label>
+                    <input name="jabatan" value={userForm.jabatan} onChange={handleUserFormChange} placeholder="Staf Pengawasan" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bagian</label>
+                    <input name="bagian" value={userForm.bagian} onChange={handleUserFormChange} placeholder="Kepatuhan Internal" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Role <span className="text-red-500">*</span></label>
+                    <select name="status_pengguna" value={userForm.status_pengguna} onChange={handleUserFormChange} required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <option value="User">👤 User</option>
+                      <option value="Psikolog">🧠 Psikolog</option>
+                      <option value="Asisten Psikolog">🤝 Asisten Psikolog</option>
+                      <option value="Admin">🛡️ Admin</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100" />
+
+              {/* Daftar Sebagai + Organization Detail */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Unit Kerja</p>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Daftar Sebagai</label>
-                <select name="daftar_sebagai" value={userForm.daftar_sebagai} onChange={handleUserFormChange} className="w-full border border-gray-300 rounded px-3 py-2">
+                <select name="daftar_sebagai" value={userForm.daftar_sebagai} onChange={handleUserFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <option value="">-- Pilih Unit --</option>
                   <option value="UPT">UPT: Daerah</option>
                   <option value="Kanwil">Kanwil: Provinsi</option>
                   <option value="Ditjenpas">Ditjenpas: Direktorat Jenderal Pemasyarakatan</option>
                 </select>
               </div>
-
               {userForm.daftar_sebagai === "Ditjenpas" && (
-                <div>
+                <div className="mt-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Direktorat</label>
-                  <select name="organization_detail" value={userForm.organization_detail} onChange={handleUserFormChange} className="w-full border border-gray-300 rounded px-3 py-2">
+                  <select name="organization_detail" value={userForm.organization_detail} onChange={handleUserFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <option value="">-- Pilih Direktorat --</option>
                     {[
                       "Sekretariat Direktorat Jenderal Pemasyarakatan",
@@ -1108,9 +1199,9 @@ export default function AdminDashboard() {
               )}
 
               {userForm.daftar_sebagai === "Kanwil" && (
-                <div>
+                <div className="mt-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Kanwil</label>
-                  <select name="organization_detail" value={userForm.organization_detail} onChange={handleUserFormChange} className="w-full border border-gray-300 rounded px-3 py-2">
+                  <select name="organization_detail" value={userForm.organization_detail} onChange={handleUserFormChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                     <option value="">-- Pilih Kanwil --</option>
                     {["Aceh","Bali","Banten","Bengkulu","D.I Yogyakarta","DKI Jakarta","Gorontalo","Jambi","Jawa Barat","Jawa Tengah","Jawa Timur","Kalimantan Barat","Kalimantan Selatan","Kalimantan Tengah","Kalimatan Timur","Kepulauan Bangka Belitung","Kepulauan Riau","Lampung","Maluku","Maluku Utara","Nusa Tenggara Barat","Nusa Tenggara Timur","Papua","Papua Barat","Riau","Sulawesi Barat","Sulawesi Selatan","Sulawesi Tengah","Sulawesi Tenggara","Sulawesi Utara","Sumatera Barat","Sumatera Selatan","Sumatera Utara"].map((k) => <option key={k} value={k}>{k}</option>)}
                   </select>
@@ -1118,10 +1209,10 @@ export default function AdminDashboard() {
               )}
 
               {userForm.daftar_sebagai === "UPT" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Pilih Provinsi UPT</label>
-                    <select value={userUptProvince} onChange={handleUserUptProvinceChange} className="w-full border border-gray-300 rounded px-3 py-2">
+                    <select value={userUptProvince} onChange={handleUserUptProvinceChange} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                       <option value="">-- Pilih Provinsi --</option>
                       {UPT_PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
                     </select>
@@ -1132,7 +1223,7 @@ export default function AdminDashboard() {
                       value={userForm.organization_detail.startsWith(`${userUptProvince} - `) ? userForm.organization_detail.replace(`${userUptProvince} - `, "") : ""}
                       onChange={handleUserUptDetailChange}
                       disabled={!userUptProvince}
-                      className="w-full border border-gray-300 rounded px-3 py-2 disabled:bg-gray-100"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
                     >
                       <option value="">-- Pilih UPT --</option>
                       {(UPT_BY_PROVINCE[userUptProvince] || []).map((upt) => <option key={upt} value={upt}>{upt}</option>)}
@@ -1141,39 +1232,51 @@ export default function AdminDashboard() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Password {editingUserId ? "(opsional)" : ""}
-                  </label>
-                  <input type="password" name="password" value={userForm.password} onChange={handleUserFormChange} className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password</label>
-                  <input type="password" name="password_confirmation" value={userForm.password_confirmation} onChange={handleUserFormChange} className="w-full border border-gray-300 rounded px-3 py-2" />
-                </div>
-              </div>
+              <div className="border-t border-gray-100" />
 
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUserFormOpen(false);
-                    resetUserForm();
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={userSubmitting}
-                  className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {userSubmitting ? "Menyimpan..." : "Simpan"}
-                </button>
+              {/* Password */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                  Password {editingUserId && <span className="text-gray-400 normal-case font-normal">(kosongkan jika tidak ingin mengubah)</span>}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Password {!editingUserId && <span className="text-red-500">*</span>}
+                    </label>
+                    <input type="password" name="password" value={userForm.password} onChange={handleUserFormChange} placeholder="Minimal 8 karakter" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Konfirmasi Password</label>
+                    <input type="password" name="password_confirmation" value={userForm.password_confirmation} onChange={handleUserFormChange} placeholder="Ulangi password" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                </div>
               </div>
             </form>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-end gap-3 rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => { setUserFormOpen(false); resetUserForm(); }}
+                className="px-5 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-white hover:shadow-sm transition-all"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                form="user-form"
+                disabled={userSubmitting}
+                className={`px-5 py-2 rounded-lg text-sm text-white font-medium transition-all disabled:opacity-50 ${
+                  editingUserId ? "bg-blue-600 hover:bg-blue-700" : "bg-orange-500 hover:bg-orange-600"
+                }`}
+              >
+                {userSubmitting ? (
+                  <span className="flex items-center gap-2"><svg className="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>Menyimpan...</span>
+                ) : (editingUserId ? "Simpan Perubahan" : "Buat Akun")}
+              </button>
+            </div>
           </div>
         </div>
       )}

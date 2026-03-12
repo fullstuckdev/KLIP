@@ -106,6 +106,7 @@ class AuthController extends Controller
     public function updateProfile(Request $request)
     {
         $validated = $request->validate([
+            'current_password' => 'required|string',
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,' . $request->user()->id,
             'no_wa' => 'nullable|string|max:20',
@@ -116,13 +117,22 @@ class AuthController extends Controller
             'organization_detail' => 'nullable|string|max:255',
         ]);
 
+        $user = $request->user();
+
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['Password saat ini tidak sesuai.'],
+            ]);
+        }
+
+        unset($validated['current_password']);
+
         if (!empty($validated['daftar_sebagai']) && empty($validated['organization_detail'])) {
             throw ValidationException::withMessages([
                 'organization_detail' => ['Detail unit wajib dipilih.'],
             ]);
         }
 
-        $user = $request->user();
         $user->update($validated);
 
         return response()->json([

@@ -19,7 +19,8 @@ export default function Consultation() {
   });
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
-  const isPsikolog = user?.status_pengguna === 'Psikolog';
+  const isPsikolog = user?.status_pengguna === 'Psikolog' || user?.status_pengguna === 'Asisten Psikolog';
+  const isOnlyPsikolog = user?.status_pengguna === 'Psikolog'; // pure psikolog — can assign to asisten
   const isAdmin = user?.status_pengguna === 'Admin';
   const canExport = isPsikolog || isAdmin;
   const [locationTypeFilter, setLocationTypeFilter] = useState('all');
@@ -30,6 +31,23 @@ export default function Consultation() {
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [markingCompleted, setMarkingCompleted] = useState(false);
   const [exportingFormat, setExportingFormat] = useState(null);
+  const [assistants, setAssistants] = useState([]);
+  const [assigningId, setAssigningId] = useState(null);
+  const [selectedAssigneeId, setSelectedAssigneeId] = useState('');
+
+  const [showConsent, setShowConsent] = useState(false);
+  const [consentChecks, setConsentChecks] = useState({ c1: false, c2: false, c3: false });
+  const allChecked = consentChecks.c1 && consentChecks.c2 && consentChecks.c3;
+
+  function openConsent() {
+    setConsentChecks({ c1: false, c2: false, c3: false });
+    setShowConsent(true);
+  }
+
+  function handleConsentProceed() {
+    setShowConsent(false);
+    setView('create');
+  }
 
   const [form, setForm] = useState({
     q1: '',
@@ -233,6 +251,43 @@ export default function Consultation() {
       status: normalizeCaseStatus(consultation?.status),
       notes: consultation?.notes || '',
     });
+    setSelectedAssigneeId('');
+    if (isOnlyPsikolog && assistants.length === 0) {
+      fetchAssistants();
+    }
+  }
+
+  async function fetchAssistants() {
+    try {
+      const response = await api.get('/api/consultations/assistants');
+      setAssistants(Array.isArray(response?.data) ? response.data : []);
+    } catch (err) {
+      console.error('Failed to fetch assistants:', err);
+    }
+  }
+
+  async function handleAssign() {
+    if (!selectedConsultation || !selectedAssigneeId) return;
+    setError(null);
+    try {
+      setAssigningId(selectedAssigneeId);
+      const response = await api.post(`/api/consultations/${selectedConsultation.id}/assign`, {
+        assignee_id: Number(selectedAssigneeId),
+      });
+      const updated = response?.data?.consultation;
+      if (updated) {
+        setSelectedConsultation(updated);
+        setConsultations((prev) =>
+          prev.map((item) => (item.id === updated.id ? updated : item))
+        );
+      }
+      setSuccess('Konsultasi berhasil didelegasikan.');
+      setSelectedAssigneeId('');
+    } catch (err) {
+      setError(err?.response?.data?.message || 'Gagal mendelegasikan konsultasi.');
+    } finally {
+      setAssigningId(null);
+    }
   }
 
   async function handleSubmitFollowUp() {
@@ -355,7 +410,7 @@ export default function Consultation() {
         ...form,
         psikolog_id: selectedPsychologistId,
       });
-      setSuccess('Konsultasi berhasil dikirim.');
+      setSuccess('Konsultasi berhasil dikirim. Mohon ditunggu, data sedang kami proses. Silakan cek menu chat secara berkala.');
       setForm({ q1:'',q2:'',q3:'',q4:'',q5:'',q6:'',q7:'' });
       localStorage.setItem('profilingCompleted', 'true');
       setView('history');
@@ -400,6 +455,83 @@ export default function Consultation() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Informed Consent Modal */}
+      {showConsent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="bg-blue-100 rounded-full p-2">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold text-gray-800">Informed Consent</h2>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+              Sebelum melanjutkan, harap baca dan setujui pernyataan berikut dengan memberi tanda centang pada setiap poin.
+            </p>
+
+            <div className="space-y-4 mb-8">
+              {[
+                { key: 'c1', text: 'Bersedia untuk berpartisipasi mengikuti seluruh prosedur dalam proses konseling klinik patnal.' },
+                { key: 'c2', text: 'Menyetujui adanya perekaman data terkait informasi yang diberikan sebagai keperluan administrasi layanan.' },
+                { key: 'c3', text: 'Seluruh informasi pribadi dan isi sesi konseling akan dijaga kerahasiaannya.' },
+              ].map(({ key, text }, idx) => (
+                <label key={key} className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative mt-0.5 flex-shrink-0">
+                    <input
+                      type="checkbox"
+                      checked={consentChecks[key]}
+                      onChange={(e) =>
+                        setConsentChecks((prev) => ({ ...prev, [key]: e.target.checked }))
+                      }
+                      className="sr-only"
+                    />
+                    <div
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                        consentChecks[key]
+                          ? 'bg-blue-600 border-blue-600'
+                          : 'bg-white border-gray-300 group-hover:border-blue-400'
+                      }`}
+                    >
+                      {consentChecks[key] && (
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-sm text-gray-700 leading-relaxed">
+                    <span className="font-semibold text-blue-700 mr-1">{idx + 1}.</span>
+                    {text}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConsent(false)}
+                className="flex-1 text-center px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleConsentProceed}
+                disabled={!allChecked}
+                className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-semibold transition ${
+                  allChecked
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Saya Setuju &amp; Lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <a href="/" className="flex items-center">
@@ -506,7 +638,7 @@ export default function Consultation() {
                   ) : (
                     <>
                       <button
-                        onClick={() => setView('choose_psikolog')}
+                        onClick={openConsent}
                         className="text-left border border-blue-200 bg-blue-50 rounded-lg p-5 hover:bg-blue-100 transition-colors"
                       >
                         <p className="text-lg font-semibold text-blue-700 mb-1">Buat Konsultasi</p>
@@ -571,6 +703,18 @@ export default function Consultation() {
           {loading && <p className="text-sm text-gray-600">Memuat riwayat...</p>}
           
           {error && <div className="mb-4 p-3 bg-red-50 text-red-700 rounded">{error}</div>}
+
+          {/* Notice for regular users when they have an active consultation */}
+          {!isPsikolog && !isAdmin && !loading && consultations.length > 0 && (
+            <div className="mb-4 flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
+              </svg>
+              <p className="text-sm text-blue-800 leading-relaxed">
+                <span className="font-semibold">Mohon ditunggu,</span> data sedang kami proses. Silakan cek menu <a href="/chat" className="underline font-medium hover:text-blue-900">chat</a> secara berkala.
+              </p>
+            </div>
+          )}
 
           {isPsikolog && consultations.length > 0 && (
             <div className="mb-4 p-4 border border-blue-100 bg-blue-50 rounded-lg">
@@ -675,7 +819,7 @@ export default function Consultation() {
 
                   <div className="mt-4">
                     {!isPsikolog && (
-                      <button onClick={() => setView('choose_psikolog')} className="text-blue-600 hover:underline">
+                      <button onClick={() => setView('create')} className="text-blue-600 hover:underline">
                         Buat Konsultasi Baru
                       </button>
                     )}
@@ -830,6 +974,50 @@ export default function Consultation() {
                   </button>
                 </div>
               )}
+
+              {/* Delegasikan ke Asisten — only for pure Psikolog */}
+              {isOnlyPsikolog && (
+                <div className="border-t pt-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-5-4H7a4 4 0 00-5 4v2h5m5-10a4 4 0 100-8 4 4 0 000 8z" />
+                    </svg>
+                    <h3 className="font-semibold text-orange-700">Delegasikan ke Asisten Psikolog</h3>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Oper tugas penanganan konsultasi ini ke Asisten Psikolog. Anda juga bisa mengambil kembali dengan memilih diri sendiri.
+                  </p>
+
+                  {selectedConsultation?.psikolog && selectedConsultation.psikolog.id !== user?.id && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded text-sm">
+                      <span className="text-orange-700 font-medium">Saat ini ditangani oleh:</span>
+                      <span className="text-orange-900">{selectedConsultation.psikolog.name}</span>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedAssigneeId}
+                      onChange={(e) => setSelectedAssigneeId(e.target.value)}
+                      className="flex-1 border rounded px-3 py-2 text-sm"
+                    >
+                      <option value="">— Pilih Asisten / Ambil Kembali —</option>
+                      <option value={user?.id}>Saya sendiri (ambil kembali)</option>
+                      {assistants.map((a) => (
+                        <option key={a.id} value={a.id}>{a.name}{a.is_available ? '' : ' (Tidak Tersedia)'}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAssign}
+                      disabled={!selectedAssigneeId || assigningId !== null}
+                      className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 text-sm font-medium whitespace-nowrap"
+                    >
+                      {assigningId !== null ? 'Mendelegasikan...' : 'Delegasikan'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end">
@@ -847,15 +1035,11 @@ export default function Consultation() {
               {view === 'choose_psikolog' && !isPsikolog && (
                 <div className="mt-2 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Pilih Psikolog Sebelum Assesment</h2>
-                    <button onClick={() => setView('menu')} className="text-gray-600 hover:underline">
-                      Kembali
+                    <h2 className="text-xl font-semibold">Pilih Psikolog</h2>
+                    <button onClick={() => setView('create')} className="text-gray-600 hover:underline">
+                      Kembali ke Form
                     </button>
                   </div>
-
-                  <p className="text-sm text-gray-600">
-                    Pilih psikolog yang akan menangani assesment Anda. Hasil assesment akan langsung masuk ke akun psikolog yang Anda pilih.
-                  </p>
 
                   {psychologistsLoading && (
                     <p className="text-sm text-gray-600">Memuat daftar psikolog...</p>
@@ -866,7 +1050,7 @@ export default function Consultation() {
                   )}
 
                   {!psychologistsLoading && psychologists.length > 0 && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                       {psychologists.map((psikolog) => {
                         const isSelected = selectedPsychologistId === psikolog.id;
 
@@ -875,7 +1059,7 @@ export default function Consultation() {
                             type="button"
                             key={psikolog.id}
                             onClick={() => setSelectedPsychologistId(psikolog.id)}
-                            className={`flex flex-col items-center text-center rounded-xl border p-4 transition ${
+                            className={`flex flex-col items-center text-center rounded-xl border p-6 transition ${
                               isSelected
                                 ? 'border-blue-500 ring-2 ring-blue-200 bg-blue-50'
                                 : 'border-gray-200 hover:border-blue-300 bg-white hover:shadow-md'
@@ -885,24 +1069,32 @@ export default function Consultation() {
                               <img
                                 src={resolvePhotoUrl(psikolog.foto)}
                                 alt={`Foto ${psikolog.name}`}
-                                className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 mb-3"
+                                className="w-28 h-28 rounded-full object-cover border-2 border-gray-200 mb-4"
                               />
                             ) : (
-                              <div className="w-20 h-20 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-2xl font-bold border-2 border-blue-200 mb-3">
+                              <div className="w-28 h-28 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-4xl font-bold border-2 border-blue-200 mb-4">
                                 {(psikolog.name || 'P').charAt(0).toUpperCase()}
                               </div>
                             )}
-                            <p className="font-semibold text-gray-900 text-sm leading-tight">{psikolog.name}</p>
-                            <p className="text-xs text-gray-500 mt-1 line-clamp-1">{psikolog.organization_detail || '-'}</p>
+                            <p className="font-bold text-gray-900 text-base leading-tight">{psikolog.name}</p>
+                            {psikolog.nip ? (
+                              <p className="text-xs text-gray-500 mt-1 font-mono">NIP: {psikolog.nip}</p>
+                            ) : (
+                              <p className="text-xs text-gray-400 mt-1 italic">NIP tidak tersedia</p>
+                            )}
+                            <p className="text-sm text-gray-500 mt-1 line-clamp-1">{psikolog.organization_detail || '-'}</p>
                             <span
-                              className={`mt-2 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              className={`mt-3 text-xs font-semibold px-3 py-1 rounded-full ${
                                 psikolog.is_available
                                   ? 'bg-green-100 text-green-700'
                                   : 'bg-red-100 text-red-700'
                               }`}
                             >
-                              {psikolog.is_available ? 'Tersedia' : 'Tidak Tersedia'}
+                              {psikolog.is_available ? '✓ Tersedia' : '✕ Tidak Tersedia'}
                             </span>
+                            {isSelected && (
+                              <span className="mt-2 text-xs font-semibold text-blue-600">✓ Dipilih</span>
+                            )}
                           </button>
                         );
                       })}
@@ -916,7 +1108,7 @@ export default function Consultation() {
                       disabled={!selectedPsychologistId || psychologistsLoading || (selectedPsychologist && !selectedPsychologist.is_available)}
                       className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
                     >
-                      Lanjut ke Assesment
+                      Lanjutkan ke Assesment
                     </button>
                     {selectedPsychologist && !selectedPsychologist.is_available && (
                       <p className="text-sm text-red-600">Psikolog terpilih sedang tidak tersedia, pilih yang berstatus tersedia.</p>
@@ -928,27 +1120,56 @@ export default function Consultation() {
               {view === 'create' && (
                 <div className="mt-2 bg-gray-50 p-6 rounded border border-gray-200">
           <h2 className="text-xl font-semibold mb-4">Profiling (Jawab pertanyaan di bawah ini)</h2>
-          {selectedPsychologist && (
-            <div className="mb-4 p-3 border border-blue-200 rounded bg-blue-50 flex items-center gap-3">
+
+          {/* Psikolog profile card — always shown before assessment */}
+          {selectedPsychologist ? (
+            <div className="mb-5 border border-blue-200 rounded-xl bg-blue-50 p-4 flex items-center gap-4">
               {selectedPsychologist.foto ? (
                 <img
                   src={resolvePhotoUrl(selectedPsychologist.foto)}
                   alt={`Foto ${selectedPsychologist.name}`}
-                  className="w-12 h-12 rounded-full object-cover border border-blue-200"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-blue-300 flex-shrink-0"
                 />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold border border-blue-200">
+                <div className="w-16 h-16 rounded-full bg-blue-200 text-blue-700 flex items-center justify-center text-2xl font-bold border-2 border-blue-300 flex-shrink-0">
                   {(selectedPsychologist.name || 'P').charAt(0).toUpperCase()}
                 </div>
               )}
-              <div>
-                <p className="text-sm text-blue-800">
-                  Psikolog yang menangani: <span className="font-semibold">{selectedPsychologist.name}</span>
-                </p>
-                <p className="text-xs text-blue-700">
-                  Status: {selectedPsychologist.is_available ? 'Tersedia' : 'Tidak Tersedia'}
-                </p>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-blue-600 font-medium mb-0.5">Psikolog yang menangani</p>
+                <p className="font-bold text-blue-900 text-base truncate">{selectedPsychologist.name}</p>
+                {selectedPsychologist.nip ? (
+                  <p className="text-xs text-blue-700 font-mono mt-0.5">NIP: {selectedPsychologist.nip}</p>
+                ) : (
+                  <p className="text-xs text-blue-400 italic mt-0.5">NIP tidak tersedia</p>
+                )}
+                {selectedPsychologist.organization_detail && (
+                  <p className="text-xs text-blue-600 mt-0.5 truncate">{selectedPsychologist.organization_detail}</p>
+                )}
+                <span className={`inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  selectedPsychologist.is_available ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {selectedPsychologist.is_available ? '✓ Tersedia' : '✕ Tidak Tersedia'}
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setView('choose_psikolog')}
+                className="flex-shrink-0 text-xs text-blue-600 underline hover:text-blue-800"
+              >
+                Ganti
+              </button>
+            </div>
+          ) : (
+            <div className="mb-5 border border-yellow-200 rounded-xl bg-yellow-50 p-4 flex items-center justify-between gap-4">
+              <p className="text-sm text-yellow-800">Belum memilih psikolog. Pilih psikolog terlebih dahulu sebelum mengisi form.</p>
+              <button
+                type="button"
+                onClick={() => setView('choose_psikolog')}
+                className="flex-shrink-0 bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold px-4 py-2 rounded-lg"
+              >
+                Pilih Psikolog
+              </button>
             </div>
           )}
           {success && <div className="mb-4 p-3 bg-green-50 text-green-700 rounded">{success}</div>}
@@ -992,7 +1213,6 @@ export default function Consultation() {
 
             <div className="flex items-center space-x-3">
               <button type="submit" disabled={submitting} className="bg-blue-600 text-white px-4 py-2 rounded">{submitting ? 'Menyimpan...' : 'Kirim'}</button>
-              <button type="button" onClick={() => setView('choose_psikolog')} className="text-gray-600">Ganti Psikolog</button>
               <button type="button" onClick={() => setView('menu')} className="text-gray-600">Batal</button>
             </div>
           </form>

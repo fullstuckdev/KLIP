@@ -7,6 +7,7 @@ export default function Profil({ initialUser }) {
   const [editField, setEditField] = useState({});
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
 
   useEffect(() => {
     setUser(initialUser);
@@ -22,10 +23,15 @@ export default function Profil({ initialUser }) {
   };
 
   const handleSave = async () => {
+    if (!currentPassword) {
+      alert('Masukkan password saat ini untuk menyimpan perubahan.');
+      return;
+    }
     try {
       setSaving(true);
 
       const payload = {
+        current_password: currentPassword,
         name: user.nama,
         email: user.email,
         no_wa: user.no_wa,
@@ -53,10 +59,12 @@ export default function Profil({ initialUser }) {
 
       alert("Perubahan disimpan");
       setEditField({});
+      setCurrentPassword('');
     } catch (error) {
       alert(
         error?.response?.data?.errors?.email?.[0] ||
         error?.response?.data?.errors?.no_wa?.[0] ||
+        error?.response?.data?.errors?.current_password?.[0] ||
         error?.response?.data?.message ||
         "Gagal menyimpan perubahan"
       );
@@ -211,6 +219,16 @@ export default function Profil({ initialUser }) {
       </div>
 
       <div className="mt-6 text-center">
+        <div className="mb-4">
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Masukkan password saat ini untuk menyimpan"
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-500 mt-1">Konfirmasi password diperlukan untuk menyimpan perubahan</p>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving}

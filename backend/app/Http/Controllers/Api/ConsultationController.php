@@ -20,6 +20,7 @@ class ConsultationController extends Controller
                 'id',
                 'name',
                 'email',
+                'nip',
                 'no_wa',
                 'foto',
                 'is_available',
@@ -35,7 +36,7 @@ class ConsultationController extends Controller
                 ->get();
         }
 
-        if ($this->isPsikolog($user)) {
+        if ($this->isPsikolog($user) || $this->isAsisPsikolog($user)) {
             return Consultation::with(['user', 'psikolog'])
                 ->where('psikolog_id', $user->id)
                 ->orderBy('created_at', 'desc')
@@ -55,6 +56,20 @@ class ConsultationController extends Controller
             || strtolower((string) ($user->daftar_sebagai ?? '')) === 'psikolog';
     }
 
+    private function isAsisPsikolog($user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        return strtolower((string) ($user->status_pengguna ?? '')) === 'asisten psikolog';
+    }
+
+    private function canHandleConsultation($user): bool
+    {
+        return $this->isPsikolog($user) || $this->isAsisPsikolog($user);
+    }
+
     private function isAdmin($user): bool
     {
         if (!$user) {
@@ -72,7 +87,7 @@ class ConsultationController extends Controller
     {
         $user = $request->user();
 
-        if ($this->isPsikolog($user)) {
+        if ($this->isPsikolog($user) || $this->isAsisPsikolog($user)) {
             $consultations = Consultation::with(['user', 'psikolog'])
                 ->where('psikolog_id', $user->id)
                 ->where('deleted_by_psikolog', false)
@@ -164,7 +179,7 @@ class ConsultationController extends Controller
             return response()->json($consultation);
         }
 
-        if ($this->isPsikolog($user)) {
+        if ($this->isPsikolog($user) || $this->isAsisPsikolog($user)) {
             if ($consultation->psikolog_id === $user->id) {
                 return response()->json($consultation);
             }
@@ -180,7 +195,7 @@ class ConsultationController extends Controller
     {
         $user = $request->user();
 
-        if (!$this->isPsikolog($user) && !$this->isAdmin($user)) {
+        if (!$this->canHandleConsultation($user) && !$this->isAdmin($user)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -192,9 +207,14 @@ class ConsultationController extends Controller
             'psikolog_id' => 'sometimes|exists:users,id|nullable',
         ]);
 
-        if ($this->isPsikolog($user)) {
+        if ($this->canHandleConsultation($user)) {
             if ($consultation->psikolog_id !== null && $consultation->psikolog_id !== $user->id) {
-                return response()->json(['message' => 'Laporan ini sudah ditangani psikolog lain'], 403);
+                return response()->json(['message' => 'Laporan ini sudah ditangani oleh penanggungjawab lain'], 403);
+            }
+
+            // Asisten psikolog cannot change psikolog_id (only psikolog can reassign)
+            if ($this->isAsisPsikolog($user)) {
+                unset($validated['psikolog_id']);
             }
 
             if ($consultation->psikolog_id === null) {
@@ -208,6 +228,61 @@ class ConsultationController extends Controller
             'message' => 'Konsultasi berhasil diperbarui',
             'consultation' => $consultation->load(['user', 'psikolog'])
         ]);
+    }
+
+    /**
+     * Assign a consultation to an Asisten Psikolog (only the owning Psikolog can do this)
+     */
+    public function assignToAssistant(Request $request, $id)
+    {
+        $user = $request->user();
+
+        if (!$this->isPsikolog($user)) {
+            return response()->json(['message' => 'Hanya Psikolog yang dapat mendelegasikan konsultasi.'], 403);
+        }
+
+        $consultation = Consultation::findOrFail($id);
+
+        // Only the psikolog currently assigned (or admin) may reassign
+        if ($consultation->psikolog_id !== null && $consultation->psikolog_id !== $user->id) {
+            return response()->json(['message' => 'Anda bukan penanggungjawab konsultasi ini.'], 403);
+        }
+
+        $validated = $request->validate([
+            'assignee_id' => 'required|exists:users,id',
+        ]);
+
+        // Verify target is an asisten psikolog or the psikolog themselves (take back)
+        $assignee = User::find($validated['assignee_id']);
+        $assigneeRole = strtolower((string) ($assignee->status_pengguna ?? ''));
+        if (!in_array($assigneeRole, ['asisten psikolog', 'psikolog'])) {
+            return response()->json(['message' => 'Target penugasan harus Asisten Psikolog atau Psikolog.'], 422);
+        }
+
+        $consultation->update(['psikolog_id' => $validated['assignee_id']]);
+
+        return response()->json([
+            'message' => 'Konsultasi berhasil didelegasikan.',
+            'consultation' => $consultation->load(['user', 'psikolog']),
+        ]);
+    }
+
+    /**
+     * Get list of Asisten Psikolog (for the assign dropdown)
+     */
+    public function assistants(Request $request)
+    {
+        if (!$this->isPsikolog($request->user())) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $assistants = User::query()
+            ->whereRaw("LOWER(COALESCE(status_pengguna, '')) = ?", ['asisten psikolog'])
+            ->select(['id', 'name', 'email', 'foto', 'is_available', 'organization_detail'])
+            ->orderBy('name')
+            ->get();
+
+        return response()->json($assistants);
     }
 
     /**
@@ -317,6 +392,7 @@ class ConsultationController extends Controller
                     'id' => $psikolog->id,
                     'name' => $psikolog->name,
                     'email' => $psikolog->email,
+                    'nip' => $psikolog->nip,
                     'no_wa' => $psikolog->no_wa,
                     'foto' => $psikolog->foto,
                     'organization_detail' => $psikolog->organization_detail,
@@ -354,7 +430,7 @@ class ConsultationController extends Controller
     {
         $user = $request->user();
 
-        if (!$this->isPsikolog($user) && !$this->isAdmin($user)) {
+        if (!$this->isPsikolog($user) && !$this->isAsisPsikolog($user) && !$this->isAdmin($user)) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -373,7 +449,7 @@ class ConsultationController extends Controller
     {
         $user = $request->user();
 
-        if (!$this->isPsikolog($user) && !$this->isAdmin($user)) {
+        if (!$this->isPsikolog($user) && !$this->isAsisPsikolog($user) && !$this->isAdmin($user)) {
             abort(403, 'Unauthorized');
         }
 

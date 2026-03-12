@@ -43,15 +43,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // Consultation management
     Route::get('/consultations', [ConsultationController::class, 'index']); // Get user's consultations
     Route::get('/consultations/psychologists', [ConsultationController::class, 'psychologists']); // Get available psychologist profiles
+    Route::get('/consultations/assistants', [ConsultationController::class, 'assistants']); // Psikolog fetches asisten list
+    Route::get('/consultations/admin/pending', [ConsultationController::class, 'pending']); // Get pending consultations (psikolog/admin)
+    Route::get('/consultations/export/pdf', [ConsultationController::class, 'exportPdf']);
+    Route::get('/consultations/export/excel', [ConsultationController::class, 'exportExcel']);
+    Route::put('/consultations/psychologists/availability', [ConsultationController::class, 'updateAvailability']);
     Route::post('/consultations', [ConsultationController::class, 'store']); // Create consultation
     Route::get('/consultations/{id}', [ConsultationController::class, 'show']); // Get specific consultation
     Route::put('/consultations/{id}', [ConsultationController::class, 'update']); // Update consultation (psikolog/admin)
     Route::post('/consultations/{id}/complete', [ConsultationController::class, 'markCompleted']); // User marks needs_referral as completed
+    Route::post('/consultations/{id}/assign', [ConsultationController::class, 'assignToAssistant']); // Psikolog assigns to asisten
     Route::delete('/consultations/{id}', [ConsultationController::class, 'destroy']); // Delete consultation
-    Route::get('/consultations/admin/pending', [ConsultationController::class, 'pending']); // Get pending consultations (psikolog/admin)
-    Route::put('/consultations/psychologists/availability', [ConsultationController::class, 'updateAvailability']);
-    Route::get('/consultations/export/pdf', [ConsultationController::class, 'exportPdf']);
-    Route::get('/consultations/export/excel', [ConsultationController::class, 'exportExcel']);
 
     // Admin user management
     Route::get('/admin/users', [AdminUserController::class, 'index']);

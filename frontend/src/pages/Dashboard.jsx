@@ -38,13 +38,13 @@ export default function Dashboard() {
       // Clear the stored token
       localStorage.removeItem("auth_token");
       delete api.defaults.headers.common["Authorization"];
-      navigate("/login");
+      navigate("/");
     } catch (err) {
       console.error("Logout failed:", err);
       // Still clear token even if logout fails
       localStorage.removeItem("auth_token");
       delete api.defaults.headers.common["Authorization"];
-      navigate("/login");
+      navigate("/");
     }
   };
 

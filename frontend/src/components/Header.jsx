@@ -51,7 +51,7 @@ export default function Header() {
     } finally {
       localStorage.removeItem("auth_token");
       delete api.defaults.headers.common["Authorization"];
-      window.location.href = "/login";
+      window.location.href = "/";
     }
   };
 

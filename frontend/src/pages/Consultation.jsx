@@ -432,12 +432,12 @@ export default function Consultation() {
       await api.post('/api/logout');
       localStorage.removeItem('auth_token');
       delete api.defaults.headers.common['Authorization'];
-      navigate('/login');
+      navigate('/');
     } catch (err) {
       console.error('Logout failed:', err);
       localStorage.removeItem('auth_token');
       delete api.defaults.headers.common['Authorization'];
-      navigate('/login');
+      navigate('/');
     }
   };
 
